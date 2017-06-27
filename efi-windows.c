@@ -13,15 +13,6 @@ const char* EFI_GLOBAL_VARIABLE = "{8BE4DF61-93CA-11D2-AA0D-00E098032B8C}";
 #endif
 
 void efi_init() {
-    // Determine if running UEFI. If no -> then exit
-    FIRMWARE_TYPE fwtype;    
-    DWORD dwRet;
-    GetFirmwareType(&fwtype);
-    if (fwtype != FirmwareTypeUefi) {
-        printf("You are not running UEFI!\n");
-        exit(-1);
-    }
-
     ObtainPrivileges(SE_SYSTEM_ENVIRONMENT_NAME);
 
     // Perform check if UEFI variables are present.
