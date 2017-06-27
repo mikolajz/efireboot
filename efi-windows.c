@@ -19,7 +19,6 @@ void efi_init() {
     // If not, we get ERROR_INVALID_FUNCTION on this.
     // If yes, we get ERROR_NOACCESS because we are accessing not-existing variable.
     // Any other errors are unexpected.
-    dwRet = 0;
     if (GetFirmwareEnvironmentVariable(___T(""), ___T("{00000000-0000-0000-0000-000000000000}"), NULL, 0) == 0) {
         if (GetLastError() == ERROR_INVALID_FUNCTION) {
             printf("Cannot access UEFI (are you running BIOS?)\n");
@@ -29,8 +28,7 @@ void efi_init() {
             // Expected
         }
         else {
-            PrintError(GetLastError());
-            exit(GetLastError());
+            ReportLastErrorAndExit(TEXT("Interal error - GetFirmwareEnvironmentVariable failed"));
         }
     }
 }
@@ -48,8 +46,9 @@ int read_efi_variable(const char* name, uint16_t** data) {
         return data_size / 2;
     }
     else {
-        PrintError(GetLastError());
-        exit(GetLastError());
+        ReportLastErrorAndExit(
+            TEXT("Error reading system start information - GetFirmwareEnvironmentVariable failed"));
+        return 0;  // Quiet warning in compiler-independent way;
     }
 }
 
@@ -63,8 +62,9 @@ int set_efi_variable(const char* name, uint16_t num) {
         return res;
     }
     else {
-        PrintError(GetLastError());
-        exit(GetLastError());
+        ReportLastErrorAndExit(
+            TEXT("Error changing system start information - SetFirmwareEnvironmentVariable failed"));
+        return 0;  // Quiet warning in compiler-independent way;
     }
 }
 

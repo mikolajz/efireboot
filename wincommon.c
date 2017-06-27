@@ -1,9 +1,22 @@
 #include <Windows.h>
 #include <stdio.h>
 
-void PrintError(DWORD errorCode) {
-    LPVOID lpMsgBuf;
+LPTSTR AllocAndPrintf(LPCTSTR fmt, ...) {
+#ifndef UNICODE
+#error "This function is implemented only for Unicode builds"
+#endif
+    va_list args;
+    va_start(args, fmt);
+    size_t length = _vsnwprintf(NULL, 0, fmt, args);
+    LPWSTR result = (LPWSTR)malloc((length+1) * sizeof(WCHAR));
+    _vsnwprintf(result, length+1, fmt, args);
+    va_end(args);
+    return result;
+}
 
+void ReportLastErrorAndExit(LPTSTR context) {
+    DWORD errorCode = GetLastError();
+    LPTSTR lpLastErrorMessage;
     FormatMessage(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
@@ -11,13 +24,17 @@ void PrintError(DWORD errorCode) {
         NULL,
         errorCode,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPTSTR)&lpMsgBuf,
+        (LPTSTR)&lpLastErrorMessage,
         0,
         NULL);
 
-    printf("Error code was: %ld\n", errorCode);
-    printf("Error message was: %ws", lpMsgBuf);
-    LocalFree(lpMsgBuf);
+    LPTSTR errorMessage = AllocAndPrintf(
+                TEXT("%s\nReason: %s"), context, lpLastErrorMessage);
+    // TODO: we could have a mode to print it out in console apps.
+    MessageBox(NULL, errorMessage, NULL, MB_ICONERROR|MB_OK);
+    free(errorMessage);
+    LocalFree(lpLastErrorMessage);
+    exit(1);
 }
 
 const wchar_t* GetWChar(const char* c) {
@@ -36,16 +53,12 @@ void ObtainPrivileges(LPCTSTR privilege) {
     DWORD error;
     // Obtain required privileges
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
-        printf("OpenProcessToken failed!\n");
-        PrintError(GetLastError());
-        exit(GetLastError());
+        ReportLastErrorAndExit(TEXT("Internal error - OpenProcessTokenFailed"));
     }
 
     res = LookupPrivilegeValue(NULL, privilege, &tkp.Privileges[0].Luid);
     if (!res) {
-        printf("LookupPrivilegeValue failed!\n");
-        PrintError(GetLastError());
-        exit(GetLastError());
+        ReportLastErrorAndExit(TEXT("Internal error - LookupPrivilegeValue"));
     }
     tkp.PrivilegeCount = 1;
     tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
@@ -53,9 +66,10 @@ void ObtainPrivileges(LPCTSTR privilege) {
 
     error = GetLastError();
     if (error != ERROR_SUCCESS) {
-        printf("AdjustTokenPrivileges failed\n");
-        PrintError(error);
-        exit(error);
+        LPTSTR context = AllocAndPrintf(
+            TEXT("Couldn't acquire a privilege needed by the program (%s)"), privilege);
+        ReportLastErrorAndExit(context);
+        free(context);
     }
 
 }

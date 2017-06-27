@@ -2,7 +2,7 @@
 #define WINERROR_H
 
 const wchar_t* GetWChar(const char* c);
-void PrintError(DWORD errorCode);
+void ReportLastErrorAndExit(LPTSTR context);
 void ObtainPrivileges(LPCTSTR privilege);
 
 #endif // WINERROR_H

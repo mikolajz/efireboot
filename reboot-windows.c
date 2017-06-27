@@ -8,7 +8,6 @@ void reboot_init() {
 void do_reboot() {
     int res = ExitWindowsEx(EWX_REBOOT, 0);
     if (res == 0) {
-        PrintError(GetLastError());
-        exit(GetLastError());
+        ReportLastErrorAndExit(TEXT("Could not reboot the system"));
     }
 }
